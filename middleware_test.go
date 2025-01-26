@@ -35,10 +35,10 @@ func TestNoMiddlewareWrap(t *testing.T) {
 	bhdlr := bhttp.Wrap(hdlr, newCtx2)
 
 	rec, req := httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/mware", nil)
-	resp := bhttp.NewBufferResponse(rec, -1)
+	resp := bhttp.NewResponseWriter(rec, -1)
 	err := bhdlr.ServeBareBHTTP(resp, req)
 	require.NoError(t, err)
-	require.NoError(t, resp.ImplicitFlush())
+	require.NoError(t, resp.FlushBuffer())
 
 	require.Equal(t, "Bob", rec.Body.String())
 }
@@ -75,10 +75,10 @@ func TestWithMiddleware(t *testing.T) {
 	bhdlr := bhttp.Wrap(hdlr, newCtx2, mw1, mw2, mw3)
 
 	rec, req := httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/mware", nil)
-	resp := bhttp.NewBufferResponse(rec, -1)
+	resp := bhttp.NewResponseWriter(rec, -1)
 	err := bhdlr.ServeBareBHTTP(resp, req)
 	require.NoError(t, err)
-	require.NoError(t, resp.ImplicitFlush())
+	require.NoError(t, resp.FlushBuffer())
 
 	require.Equal(t, "mw3(mw2(mw1()))", rec.Body.String())
 }

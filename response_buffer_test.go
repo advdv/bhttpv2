@@ -1,4 +1,4 @@
-package bhttp_test
+package bhttp
 
 import (
 	"bytes"
@@ -13,7 +13,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/advdv/bhttp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -33,13 +32,13 @@ func BenchmarkResponseBuffer(b *testing.B) {
 
 			for n := 0; n < b.N; n++ {
 				resp = httptest.NewRecorder()
-				resp = bhttp.NewBufferResponse(resp, -1)
+				resp = newBufferResponse(resp, -1)
 				written, err := resp.Write(dat)
 				require.NoError(b, err, "write should succeed")
 				require.NotZero(b, written, "should have written bytes")
 
-				rbuf, _ := resp.(*bhttp.ResponseBuffer)
-				err = rbuf.ImplicitFlush()
+				rbuf, _ := resp.(*ResponseBuffer)
+				err = rbuf.FlushBuffer()
 				require.NoError(b, err, "implicit flush should succeed")
 
 				rbuf.Free()
@@ -194,9 +193,9 @@ func TestHandleImplementations(t *testing.T) {
 				Config: &http.Server{
 					ReadHeaderTimeout: time.Second,
 					Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-						wr := bhttp.NewBufferResponse(w, 10)
+						wr := newBufferResponse(w, 10)
 						tt.handler(wr, r)
-						err := wr.ImplicitFlush()
+						err := wr.FlushBuffer()
 						require.NoError(t, err, "implicit flush in test must succeed")
 					}),
 					ErrorLog: log2,
@@ -238,7 +237,7 @@ func TestBufferedWrites(t *testing.T) {
 	t.Run("limiting", func(t *testing.T) {
 		t.Run("should limit writes exactly", func(t *testing.T) {
 			rec := httptest.NewRecorder()
-			wrt := bhttp.NewBufferResponse(rec, 1)
+			wrt := newBufferResponse(rec, 1)
 			n, err := wrt.Write([]byte{0x01})
 			require.NoError(t, err, "should not limit first write")
 			require.Equal(t, 1, n, "should have written 1 byte")
@@ -246,23 +245,23 @@ func TestBufferedWrites(t *testing.T) {
 			n, err = wrt.Write([]byte{0x02})
 			require.Equal(t, 0, n, "should not write second byte")
 			require.Error(t, err, "should have an error on second write")
-			require.True(t, errors.Is(err, bhttp.ErrBufferFull), "should be buffer full error")
+			require.True(t, errors.Is(err, ErrBufferFull), "should be buffer full error")
 			assert.Equal(t, 0, rec.Body.Len(), "nothing should be flushed to underlying yet")
 		})
 
 		t.Run("should limit writes when writing past", func(t *testing.T) {
 			rec := httptest.NewRecorder()
-			wrt := bhttp.NewBufferResponse(rec, 1)
+			wrt := newBufferResponse(rec, 1)
 			n, err := wrt.Write([]byte{0x01, 0x02})
 			require.Equal(t, 0, n)
 			require.Error(t, err)
-			require.True(t, errors.Is(err, bhttp.ErrBufferFull))
+			require.True(t, errors.Is(err, ErrBufferFull))
 			assert.Equal(t, 0, rec.Body.Len(), "no flush should occur when limit is exceeded")
 		})
 
 		t.Run("should not limit writes when passed -1", func(t *testing.T) {
 			rec := httptest.NewRecorder()
-			wrt := bhttp.NewBufferResponse(rec, -1)
+			wrt := newBufferResponse(rec, -1)
 			n, err := wrt.Write([]byte{0x01, 0x02})
 			require.NoError(t, err)
 			require.Equal(t, 2, n)
@@ -271,7 +270,7 @@ func TestBufferedWrites(t *testing.T) {
 
 		t.Run("should flush correctly", func(t *testing.T) {
 			rec := httptest.NewRecorder()
-			fwr := bhttp.NewBufferResponse(rec, 2)
+			fwr := newBufferResponse(rec, 2)
 
 			for i := 0; i < 3; i++ {
 				n, err := fwr.Write([]byte{0x01, 0x02})
@@ -287,14 +286,14 @@ func TestBufferedWrites(t *testing.T) {
 
 	t.Run("should unwrap correctly", func(t *testing.T) {
 		rec := httptest.NewRecorder()
-		fwr := bhttp.NewBufferResponse(rec, 0)
+		fwr := newBufferResponse(rec, 0)
 		require.Equal(t, rec, fwr.Unwrap())
 	})
 
 	t.Run("should pass on flush errors", func(t *testing.T) {
 		rec := httptest.NewRecorder()
 		wr := failingResponseWriter{rec}
-		fwr := bhttp.NewBufferResponse(wr, -1)
+		fwr := newBufferResponse(wr, -1)
 		_, _ = fmt.Fprint(fwr, "foo") // triggers underlying write on flush
 		err := fwr.FlushError()
 		require.Error(t, err)
@@ -304,7 +303,7 @@ func TestBufferedWrites(t *testing.T) {
 	t.Run("reset behaviour", func(t *testing.T) {
 		t.Run("should allow re-writing after reset", func(t *testing.T) {
 			rec := httptest.NewRecorder()
-			resp := bhttp.NewBufferResponse(rec, -1)
+			resp := newBufferResponse(rec, -1)
 
 			n, err := fmt.Fprintf(resp, "foo")
 			require.NoError(t, err)
@@ -322,7 +321,7 @@ func TestBufferedWrites(t *testing.T) {
 
 		t.Run("should allow re-writing headers", func(t *testing.T) {
 			rec := httptest.NewRecorder()
-			resp := bhttp.NewBufferResponse(rec, -1)
+			resp := newBufferResponse(rec, -1)
 			resp.Header().Set("X-Before", "before")
 			resp.Reset()
 			resp.Header().Set("X-After", "after")
@@ -334,7 +333,7 @@ func TestBufferedWrites(t *testing.T) {
 
 		t.Run("should allow re-writing status code", func(t *testing.T) {
 			rec := httptest.NewRecorder()
-			resp := bhttp.NewBufferResponse(rec, -1)
+			resp := newBufferResponse(rec, -1)
 			resp.WriteHeader(http.StatusCreated)
 
 			resp.Reset()
@@ -346,7 +345,7 @@ func TestBufferedWrites(t *testing.T) {
 
 		t.Run("should reset to default status of 200", func(t *testing.T) {
 			rec := httptest.NewRecorder()
-			resp := bhttp.NewBufferResponse(rec, -1)
+			resp := newBufferResponse(rec, -1)
 			resp.WriteHeader(http.StatusCreated)
 			resp.Reset()
 
@@ -356,7 +355,7 @@ func TestBufferedWrites(t *testing.T) {
 
 		t.Run("should not allow reset after explicit flush", func(t *testing.T) {
 			rec := httptest.NewRecorder()
-			resp := bhttp.NewBufferResponse(rec, -1)
+			resp := newBufferResponse(rec, -1)
 			rc := http.NewResponseController(resp)
 			require.NoError(t, rc.Flush())
 
@@ -370,7 +369,7 @@ func TestBufferedWrites(t *testing.T) {
 
 		t.Run("should reset limit after reset", func(t *testing.T) {
 			rec := httptest.NewRecorder()
-			resp := bhttp.NewBufferResponse(rec, 2)
+			resp := newBufferResponse(rec, 2)
 
 			for i := 0; i < 3; i++ {
 				resp.Reset()

@@ -14,6 +14,8 @@ type Context interface{ context.Context }
 type ResponseWriter interface {
 	http.ResponseWriter
 	Reset()
+	Free()
+	FlushBuffer() error
 }
 
 // Handler mirrors http.Handler but it supports typed context values and a buffered response allow returning error.
@@ -62,7 +64,7 @@ func ToBare[C Context](h Handler[C], contextInit ContextInitFunc[C]) BareHandler
 // creates a buffered response writer and flushes it implicitely after serving the request.
 func ToStd(h BareHandler, bufLimit int, logs Logger) http.Handler {
 	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
-		bresp := NewBufferResponse(resp, bufLimit)
+		bresp := NewResponseWriter(resp, bufLimit)
 		defer bresp.Free()
 
 		if err := h.ServeBareBHTTP(bresp, req); err != nil {
@@ -76,13 +78,8 @@ func ToStd(h BareHandler, bufLimit int, logs Logger) http.Handler {
 				http.StatusInternalServerError)
 		}
 
-		if err := bresp.ImplicitFlush(); err != nil {
+		if err := bresp.FlushBuffer(); err != nil {
 			logs.LogImplicitFlushError(err)
 		}
 	})
 }
-
-var (
-	_ Handler[context.Context] = HandlerFunc[context.Context](func(context.Context, ResponseWriter, *http.Request) error { return nil })
-	_ BareHandler              = BareHandlerFunc(func(ResponseWriter, *http.Request) error { return nil })
-)
