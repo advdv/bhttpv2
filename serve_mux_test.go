@@ -18,7 +18,7 @@ func serveBlogPost(ctx context.Context, w bhttp.ResponseWriter, r *http.Request)
 
 func middleware1(next bhttp.BareHandler) bhttp.BareHandler {
 	return bhttp.BareHandlerFunc(func(w bhttp.ResponseWriter, r *http.Request) error {
-		return next.ServeBareBHTTP(w, r.WithContext(context.WithValue(r.Context(), "foo", "bar")))
+		return next.ServeBareBHTTP(w, r.WithContext(context.WithValue(r.Context(), "foo", "bar"))) //nolint:staticcheck
 	})
 }
 

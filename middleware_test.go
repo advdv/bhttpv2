@@ -46,7 +46,7 @@ func TestNoMiddlewareWrap(t *testing.T) {
 var mw1 = func(next bhttp.BareHandler) bhttp.BareHandler {
 	return bhttp.BareHandlerFunc(func(w bhttp.ResponseWriter, r *http.Request) error {
 		v, _ := r.Context().Value("v").(string)
-		r = r.WithContext(context.WithValue(r.Context(), "v", fmt.Sprintf("mw1(%s)", v)))
+		r = r.WithContext(context.WithValue(r.Context(), "v", fmt.Sprintf("mw1(%s)", v))) //nolint:staticcheck
 
 		return next.ServeBareBHTTP(w, r)
 	})
@@ -55,7 +55,7 @@ var mw1 = func(next bhttp.BareHandler) bhttp.BareHandler {
 var mw2 = func(next bhttp.BareHandler) bhttp.BareHandler {
 	return bhttp.BareHandlerFunc(func(w bhttp.ResponseWriter, r *http.Request) error {
 		v, _ := r.Context().Value("v").(string)
-		r = r.WithContext(context.WithValue(r.Context(), "v", fmt.Sprintf("mw2(%s)", v)))
+		r = r.WithContext(context.WithValue(r.Context(), "v", fmt.Sprintf("mw2(%s)", v))) //nolint:staticcheck
 
 		return next.ServeBareBHTTP(w, r)
 	})
@@ -64,7 +64,7 @@ var mw2 = func(next bhttp.BareHandler) bhttp.BareHandler {
 var mw3 = func(next bhttp.BareHandler) bhttp.BareHandler {
 	return bhttp.BareHandlerFunc(func(w bhttp.ResponseWriter, r *http.Request) error {
 		v, _ := r.Context().Value("v").(string)
-		r = r.WithContext(context.WithValue(r.Context(), "v", fmt.Sprintf("mw3(%s)", v)))
+		r = r.WithContext(context.WithValue(r.Context(), "v", fmt.Sprintf("mw3(%s)", v))) //nolint:staticcheck
 
 		return next.ServeBareBHTTP(w, r)
 	})

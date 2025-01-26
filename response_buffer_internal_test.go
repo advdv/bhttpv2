@@ -30,7 +30,7 @@ func BenchmarkResponseBuffer(b *testing.B) {
 			b.ResetTimer()
 			b.ReportAllocs()
 
-			for n := 0; n < b.N; n++ {
+			for range b.N {
 				resp = httptest.NewRecorder()
 				resp = newBufferResponse(resp, -1)
 				written, err := resp.Write(dat)
@@ -49,7 +49,7 @@ func BenchmarkResponseBuffer(b *testing.B) {
 			b.ResetTimer()
 			b.ReportAllocs()
 
-			for n := 0; n < b.N; n++ {
+			for range b.N {
 				resp = httptest.NewRecorder()
 				written, err := resp.Write(dat)
 				require.NoError(b, err, "original responsewriter write should succeed")
@@ -138,7 +138,7 @@ func TestHandleImplementations(t *testing.T) {
 				rc := http.NewResponseController(w)
 				w.Header().Set("Rab", "dar")
 				fmt.Fprintf(w, "aaa")
-				require.NoError(t, rc.Flush(), "flushing must not error in test")
+				assert.NoError(t, rc.Flush(), "flushing must not error in test")
 				w.Header().Set("Dar", "tab")
 			},
 			check: func(t *testing.T, r1, r2 *http.Response, b1, b2 *bytes.Buffer) {
@@ -163,7 +163,6 @@ func TestHandleImplementations(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			// Start two servers:
 			//   - srv1 is a regular httptest.Server with the given handler
@@ -196,7 +195,7 @@ func TestHandleImplementations(t *testing.T) {
 						wr := newBufferResponse(w, 10)
 						tt.handler(wr, r)
 						err := wr.FlushBuffer()
-						require.NoError(t, err, "implicit flush in test must succeed")
+						assert.NoError(t, err, "implicit flush in test must succeed")
 					}),
 					ErrorLog: log2,
 				},
@@ -204,8 +203,8 @@ func TestHandleImplementations(t *testing.T) {
 			srv2.Start()
 			defer srv2.Close()
 
-			req1, _ := http.NewRequest(http.MethodGet, srv1.URL, nil)
-			req2, _ := http.NewRequest(http.MethodGet, srv2.URL, nil)
+			req1, _ := http.NewRequest(http.MethodGet, srv1.URL, nil) //nolint:noctx
+			req2, _ := http.NewRequest(http.MethodGet, srv2.URL, nil) //nolint:noctx
 
 			resp1, err1 := http.DefaultClient.Do(req1)
 			resp2, err2 := http.DefaultClient.Do(req2)
@@ -245,7 +244,7 @@ func TestBufferedWrites(t *testing.T) {
 			n, err = wrt.Write([]byte{0x02})
 			require.Equal(t, 0, n, "should not write second byte")
 			require.Error(t, err, "should have an error on second write")
-			require.True(t, errors.Is(err, ErrBufferFull), "should be buffer full error")
+			require.ErrorIs(t, err, ErrBufferFull, "should be buffer full error")
 			assert.Equal(t, 0, rec.Body.Len(), "nothing should be flushed to underlying yet")
 		})
 
@@ -255,7 +254,7 @@ func TestBufferedWrites(t *testing.T) {
 			n, err := wrt.Write([]byte{0x01, 0x02})
 			require.Equal(t, 0, n)
 			require.Error(t, err)
-			require.True(t, errors.Is(err, ErrBufferFull))
+			require.ErrorIs(t, err, ErrBufferFull, "should be buffer full error")
 			assert.Equal(t, 0, rec.Body.Len(), "no flush should occur when limit is exceeded")
 		})
 
@@ -272,7 +271,7 @@ func TestBufferedWrites(t *testing.T) {
 			rec := httptest.NewRecorder()
 			fwr := newBufferResponse(rec, 2)
 
-			for i := 0; i < 3; i++ {
+			for range 3 {
 				n, err := fwr.Write([]byte{0x01, 0x02})
 				require.NoError(t, err)
 				require.Equal(t, 2, n)
@@ -371,7 +370,7 @@ func TestBufferedWrites(t *testing.T) {
 			rec := httptest.NewRecorder()
 			resp := newBufferResponse(rec, 2)
 
-			for i := 0; i < 3; i++ {
+			for range 3 {
 				resp.Reset()
 				n, err := resp.Write([]byte("fo"))
 				require.NoError(t, err)
@@ -384,7 +383,6 @@ func TestBufferedWrites(t *testing.T) {
 	})
 }
 
-// failingResponseWriter is used to trigger flush errors
 type failingResponseWriter struct {
 	http.ResponseWriter
 }

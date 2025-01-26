@@ -28,7 +28,7 @@ func TestReverser(t *testing.T) {
 
 	t.Run("should error if pattern already exists", func(t *testing.T) {
 		_, err := rev.NamedPattern("homepage", "/")
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.Contains(t, err.Error(), "already exists")
 	})
 
@@ -40,13 +40,13 @@ func TestReverser(t *testing.T) {
 
 	t.Run("should error if reversing unknown name", func(t *testing.T) {
 		_, err := rev.Reverse("bogus")
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.Contains(t, err.Error(), "no pattern named: \"bogus\"")
 	})
 
 	t.Run("should error if url building fails", func(t *testing.T) {
 		_, err := rev.Reverse("blog_post")
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.Contains(t, err.Error(), "not enough values")
 	})
 }

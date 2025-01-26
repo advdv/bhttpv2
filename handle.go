@@ -40,7 +40,7 @@ type BareHandler interface {
 // BareHandlerFunc allow casting a function to an implementation of [Handler].
 type BareHandlerFunc func(ResponseWriter, *http.Request) error
 
-// ServeBHTTP implements the [Handler] interface.
+// ServeBareBHTTP implements the [Handler] interface.
 func (f BareHandlerFunc) ServeBareBHTTP(w ResponseWriter, r *http.Request) error {
 	return f(w, r)
 }
@@ -61,7 +61,7 @@ func ToBare[C Context](h Handler[C], contextInit ContextInitFunc[C]) BareHandler
 }
 
 // ToStd converts a bare handler into a standard library http.Handler. The implementation
-// creates a buffered response writer and flushes it implicitely after serving the request.
+// creates a buffered response writer and flushes it implicitly after serving the request.
 func ToStd(h BareHandler, bufLimit int, logs Logger) http.Handler {
 	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
 		bresp := NewResponseWriter(resp, bufLimit)

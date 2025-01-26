@@ -1,11 +1,4 @@
 linters-settings:
-  depguard:
-    rules:
-      main:
-        list-mode: lax
-        files:
-          - "$all"
-        deny: []
   nlreturn:
     block-size: 3
   staticcheck:
@@ -50,6 +43,7 @@ linters:
     - wrapcheck
     - exportloopref # deprecated
     - thelper # not usefull it seems
+    - depguard
 
 issues:
   include:
